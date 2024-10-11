@@ -26,14 +26,14 @@ if TYPE_CHECKING:
 
 class DuckDBConnectionManager(SQLConnectionManager):
     TYPE = "duckdb"
-    _LOCK = threading.Lock()
+    _LOCK = threading.RLock()
     _ENV = None
     _LOGGED_MESSAGES: Set[str] = set()
 
     def __init__(self, config: AdapterRequiredConfig, mp_context: SpawnContext) -> None:
         self.profile = config
         self.thread_connections: Dict[Hashable, Connection] = {}
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self.query_header: Optional[MacroQueryStringSetter] = None
         self.disable_transactions = config.credentials.disable_transactions  # type: ignore
 
