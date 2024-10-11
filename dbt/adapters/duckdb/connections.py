@@ -1,11 +1,12 @@
 import atexit
 import threading
 from contextlib import contextmanager
-from multiprocessing.context import SpawnContext
 from typing import Optional
 from typing import Set
 from typing import Tuple
 from typing import TYPE_CHECKING
+from typing import Hashable, Dict
+from multiprocessing.context import SpawnContext
 
 import dbt.exceptions
 from . import environments
@@ -15,6 +16,7 @@ from dbt.adapters.contracts.connection import Connection
 from dbt.adapters.contracts.connection import ConnectionState
 from dbt.adapters.events.logging import AdapterLogger
 from dbt.adapters.sql import SQLConnectionManager
+from dbt.adapters.base.query_headers import MacroQueryStringSetter
 
 logger = AdapterLogger("DuckDB")
 
@@ -24,12 +26,15 @@ if TYPE_CHECKING:
 
 class DuckDBConnectionManager(SQLConnectionManager):
     TYPE = "duckdb"
-    _LOCK = threading.RLock()
+    _LOCK = threading.Lock()
     _ENV = None
     _LOGGED_MESSAGES: Set[str] = set()
 
     def __init__(self, config: AdapterRequiredConfig, mp_context: SpawnContext) -> None:
-        super().__init__(config, mp_context)
+        self.profile = config
+        self.thread_connections: Dict[Hashable, Connection] = {}
+        self.lock = threading.Lock()
+        self.query_header: Optional[MacroQueryStringSetter] = None
         self.disable_transactions = config.credentials.disable_transactions  # type: ignore
 
     @classmethod
